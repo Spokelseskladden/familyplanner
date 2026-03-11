@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#2C3E5A">
+<title>Familieplanlegger</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,500;0,700;1,300&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --slate:       #2C3E5A; --slate-mid:   #3D5273; --slate-light: #6B89A8;
+    --slate-soft:  #D8E5F0; --slate-pale:  #EEF4FA;
+    --sage:        #5A7A65; --sage-mid:    #6E9278;  --sage-light:  #9BB8A2;
+    --sage-soft:   #D6E8DA; --sage-pale:   #EDF5EF;
+    --cream:       #FAF8F4; --warm-white:  #FFFEFB;
+    --ink:         #1E2530; --soft-ink:    #3A4455;  --muted: #8A94A3; --border: #E2E8EF;
+    --amber:       #C47B2E; --amber-soft:  #F5E8D3;
+    --rose:        #C45A5A; --rose-soft:   #F5DADA;
+    --shadow-md:   0 4px 20px rgba(44,62,90,0.12);
+    --shadow-lg:   0 12px 40px rgba(44,62,90,0.18);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top:    env(safe-area-inset-top, 0px);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; }
+  body { font-family:'DM Sans',sans-serif; background:var(--cream); color:var(--ink); overscroll-behavior:none; }
+
+  /* ── AUTH SCREEN ── */
+  #authScreen {
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background: linear-gradient(135deg, var(--slate) 0%, var(--slate-mid) 50%, var(--sage) 100%);
+    padding:20px;
+  }
+  .auth-card {
+    background:var(--warm-white); border-radius:24px; padding:40px 32px;
+    width:100%; max-width:400px; text-align:center;
+    box-shadow:var(--shadow-lg);
+    animation: fadeUp 0.4s ease;
+  }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  .auth-logo { font-family:'Fraunces',serif; font-size:2rem; font-weight:300; color:var(--slate); margin-bottom:6px; }
+  .auth-logo em { color:var(--sage); font-style:italic; }
+  .auth-tagline { font-size:0.88rem; color:var(--muted); margin-bottom:32px; }
+  .btn-google {
+    width:100%; padding:14px 20px; border-radius:12px; border:1.5px solid var(--border);
+    background:var(--warm-white); cursor:pointer; font-family:'DM Sans',sans-serif;
+    font-size:0.95rem; font-weight:500; color:var(--ink);
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    transition:all 0.2s; touch-action:manipulation; margin-bottom:12px;
+  }
+  .btn-google:hover { background:var(--slate-pale); border-color:var(--slate-light); }
+  .btn-google img { width:20px; height:20px; }
+  .auth-divider { display:flex; align-items:center; gap:10px; margin:16px 0; }
+  .auth-divider::before,.auth-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+  .auth-divider span { font-size:0.75rem; color:var(--muted); }
+  .auth-input {
+    width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:12px;
+    font-family:'DM Sans',sans-serif; font-size:1rem; background:var(--cream); color:var(--ink);
+    margin-bottom:10px; transition:border-color 0.2s; -webkit-appearance:none;
+  }
+  .auth-input:focus { outline:none; border-color:var(--slate-light); }
+  .btn-primary {
+    width:100%; background:var(--slate); color:#fff; border:none;
+    padding:14px; border-radius:12px; font-family:'DM Sans',sans-serif;
+    font-size:0.95rem; font-weight:600; cursor:pointer; transition:background 0.2s;
+    touch-action:manipulation; margin-bottom:10px;
+  }
+  .btn-primary:active { background:var(--slate-mid); }
+  .auth-switch { font-size:0.82rem; color:var(--muted); }
+  .auth-switch a { color:var(--slate); font-weight:500; cursor:pointer; text-decoration:none; }
+  .auth-error { background:var(--rose-soft); color:var(--rose); padding:10px 14px; border-radius:10px; font-size:0.82rem; margin-bottom:12px; display:none; }
+
+  /* ── FAMILY SETUP SCREEN ── */
+  #familyScreen {
+    min-height:100vh; display:none; align-items:center; justify-content:center;
+    background: linear-gradient(135deg, var(--slate) 0%, var(--slate-mid) 50%, var(--sage) 100%);
+    padding:20px;
+  }
+  .family-card {
+    background:var(--warm-white); border-radius:24px; padding:36px 28px;
+    width:100%; max-width:420px; box-shadow:var(--shadow-lg);
+    animation: fadeUp 0.4s ease;
+  }
+  .family-card h2 { font-family:'Fraunces',serif; font-size:1.5rem; font-weight:500; color:var(--ink); margin-bottom:6px; }
+  .family-card p  { font-size:0.85rem; color:var(--muted); margin-bottom:24px; line-height:1.5; }
+  .family-option {
+    border:1.5px solid var(--border); border-radius:14px; padding:18px;
+    cursor:pointer; margin-bottom:12px; transition:all 0.2s; touch-action:manipulation;
+  }
+  .family-option:hover { border-color:var(--slate-light); background:var(--slate-pale); }
+  .family-option h3 { font-size:0.95rem; font-weight:600; color:var(--ink); margin-bottom:3px; }
+  .family-option p  { font-size:0.8rem; color:var(--muted); margin:0; }
+  .family-option-icon { font-size:1.5rem; margin-bottom:8px; }
+  .family-divider { text-align:center; font-size:0.78rem; color:var(--muted); margin:4px 0 12px; }
+
+  .code-display {
+    background:var(--slate-pale); border-radius:12px; padding:20px;
+    text-align:center; margin:16px 0;
+  }
+  .code-display .code {
+    font-family:'Fraunces',serif; font-size:2.5rem; font-weight:700;
+    letter-spacing:0.2em; color:var(--slate);
+  }
+  .code-display p { font-size:0.78rem; color:var(--muted); margin-top:6px; }
+
+  .btn-secondary {
+    width:100%; background:var(--cream); color:var(--muted); border:1.5px solid var(--border);
+    padding:13px; border-radius:12px; font-family:'DM Sans',sans-serif;
+    font-size:0.9rem; cursor:pointer; transition:all 0.2s; touch-action:manipulation;
+  }
+  .btn-secondary:active { border-color:var(--ink); color:var(--ink); }
+
+  /* ── APP SCREEN ── */
+  #appScreen { display:none; }
+
+  /* ── HEADER ── */
+  header {
+    background:var(--slate); padding:calc(14px + var(--safe-top)) 20px 14px;
+    position:sticky; top:0; z-index:100; box-shadow:var(--shadow-md);
+  }
+  .header-inner { display:flex; align-items:center; justify-content:space-between; gap:12px; max-width:1400px; margin:0 auto; }
+  .logo { font-family:'Fraunces',serif; font-size:1.2rem; color:#fff; font-weight:300; letter-spacing:-0.02em; white-space:nowrap; flex-shrink:0; }
+  .logo em { color:var(--sage-light); font-style:italic; }
+  .logo small { font-size:0.65rem; display:block; color:rgba(255,255,255,0.5); font-family:'DM Sans',sans-serif; font-weight:400; line-height:1; margin-top:1px; }
+
+  .week-nav { display:flex; align-items:center; gap:10px; flex:1; justify-content:center; }
+  .week-nav button {
+    background:rgba(255,255,255,0.12); border:none; color:#fff;
+    width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:1rem;
+    display:flex; align-items:center; justify-content:center; transition:background 0.2s;
+    flex-shrink:0; touch-action:manipulation;
+  }
+  .week-nav button:active { background:rgba(255,255,255,0.25); }
+  .week-label { font-family:'Fraunces',serif; color:rgba(255,255,255,0.9); font-size:0.85rem; font-weight:300; text-align:center; min-width:130px; }
+
+  .header-icons { display:flex; gap:6px; flex-shrink:0; }
+  .icon-btn {
+    background:rgba(255,255,255,0.12); border:none; color:#fff;
+    width:38px; height:38px; border-radius:10px; cursor:pointer; font-size:1.1rem;
+    display:flex; align-items:center; justify-content:center; transition:background 0.2s; touch-action:manipulation;
+  }
+  .icon-btn:active { background:rgba(255,255,255,0.25); }
+
+  /* ── DAY STRIP ── */
+  .day-strip { background:var(--slate-mid); padding:0 16px; display:none; overflow-x:auto; scrollbar-width:none; }
+  .day-strip::-webkit-scrollbar { display:none; }
+  .day-strip-inner { display:flex; gap:4px; padding:8px 0; }
+  .strip-day { display:flex; flex-direction:column; align-items:center; padding:6px 10px; border-radius:10px; cursor:pointer; min-width:44px; transition:background 0.15s; touch-action:manipulation; }
+  .strip-day:active { background:rgba(255,255,255,0.15); }
+  .strip-day.active { background:var(--sage); }
+  .strip-dayname { font-size:0.63rem; font-weight:600; color:rgba(255,255,255,0.55); text-transform:uppercase; letter-spacing:0.05em; }
+  .strip-day.active .strip-dayname { color:#fff; }
+  .strip-daynum { font-family:'Fraunces',serif; font-size:1.1rem; font-weight:500; color:rgba(255,255,255,0.8); line-height:1.2; }
+  .strip-day.active .strip-daynum,.strip-day.active.is-today .strip-daynum { color:#fff; }
+  .strip-day.is-today .strip-daynum { color:var(--sage-light); }
+  .strip-dot { width:4px; height:4px; border-radius:50%; background:var(--sage-light); margin-top:3px; }
+
+  /* ── MAIN ── */
+  main { max-width:1400px; margin:0 auto; padding:20px 20px calc(80px + var(--safe-bottom)); }
+
+  .legend { display:flex; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
+  .legend-item { display:flex; align-items:center; gap:5px; font-size:0.75rem; color:var(--soft-ink); }
+  .legend-dot { width:8px; height:8px; border-radius:2px; flex-shrink:0; }
+  .legend-dot.school { background:var(--slate); } .legend-dot.sport { background:var(--sage); }
+  .legend-dot.family { background:var(--amber); } .legend-dot.other { background:var(--rose); }
+
+  /* ── DESKTOP GRID ── */
+  .week-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:10px; }
+  .day-col { background:var(--warm-white); border-radius:16px; border:1px solid var(--border); overflow:hidden; min-height:500px; display:flex; flex-direction:column; transition:box-shadow 0.2s; }
+  .day-col:hover { box-shadow:var(--shadow-md); }
+  .day-col.today { border-color:var(--slate-light); border-width:2px; }
+  .day-header { padding:12px 12px 9px; border-bottom:1px solid var(--border); position:relative; background:linear-gradient(135deg,var(--slate-pale),transparent); }
+  .day-col.today .day-header { background:linear-gradient(135deg,var(--slate-soft),var(--sage-pale)); }
+  .day-name { font-family:'Fraunces',serif; font-size:0.95rem; font-weight:500; color:var(--soft-ink); }
+  .day-date { font-size:0.72rem; color:var(--muted); margin-top:2px; }
+  .today .day-name { color:var(--slate); }
+  .today-pill { position:absolute; top:10px; right:10px; background:var(--slate); color:#fff; font-size:0.6rem; font-weight:600; padding:2px 7px; border-radius:20px; }
+  .day-events { padding:8px; flex:1; display:flex; flex-direction:column; gap:6px; }
+
+  /* ── MOBILE DAY VIEW ── */
+  .mobile-day-view { display:none; flex-direction:column; gap:10px; }
+  .mobile-day-header { font-family:'Fraunces',serif; font-size:1.5rem; font-weight:500; color:var(--slate); padding:4px 0 12px; border-bottom:2px solid var(--slate-soft); display:flex; align-items:baseline; gap:10px; }
+  .mobile-day-header .date-small { font-size:0.85rem; font-weight:300; color:var(--muted); font-family:'DM Sans',sans-serif; }
+  .mobile-events-list { display:flex; flex-direction:column; gap:8px; }
+  .empty-day { text-align:center; padding:40px 20px; color:var(--muted); font-size:0.9rem; }
+  .empty-day .empty-icon { font-size:2rem; margin-bottom:8px; }
+
+  /* ── EVENT CARDS ── */
+  .event-card { padding:9px 12px; border-radius:10px; font-size:0.8rem; cursor:pointer; position:relative; animation:fadeIn 0.25s ease; border-left:3px solid transparent; transition:transform 0.15s; }
+  .event-card:active { transform:scale(0.98); }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+  .event-card.school { background:var(--slate-pale); border-left-color:var(--slate); color:var(--slate); }
+  .event-card.sport  { background:var(--sage-pale);  border-left-color:var(--sage);  color:var(--sage); }
+  .event-card.family { background:var(--amber-soft); border-left-color:var(--amber); color:var(--amber); }
+  .event-card.other  { background:var(--rose-soft);  border-left-color:var(--rose);  color:var(--rose); }
+  .event-title { font-weight:600; line-height:1.3; }
+  .event-time  { font-size:0.73rem; opacity:0.75; margin-top:3px; }
+  .event-who   { font-size:0.7rem;  opacity:0.6;  margin-top:2px; }
+  .event-card .delete-btn { display:none; position:absolute; top:6px; right:6px; background:rgba(0,0,0,0.1); border:none; border-radius:50%; width:20px; height:20px; font-size:0.65rem; cursor:pointer; align-items:center; justify-content:center; color:inherit; touch-action:manipulation; }
+  .event-card:hover .delete-btn { display:flex; }
+
+  .add-event-btn { width:100%; background:none; border:1.5px dashed var(--border); border-radius:10px; padding:9px; font-size:0.78rem; color:var(--muted); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; margin-top:auto; touch-action:manipulation; }
+  .add-event-btn:hover { background:var(--slate-pale); border-color:var(--slate-light); color:var(--slate); }
+
+  .mobile-add-btn { display:none; width:100%; background:var(--slate); color:#fff; border:none; border-radius:14px; padding:15px; font-size:0.95rem; font-weight:500; font-family:'DM Sans',sans-serif; cursor:pointer; margin-top:8px; touch-action:manipulation; transition:background 0.2s; }
+  .mobile-add-btn:active { background:var(--slate-mid); }
+
+  /* ── BOTTOM NAV ── */
+  .bottom-nav { display:none; position:fixed; bottom:0; left:0; right:0; background:var(--warm-white); border-top:1px solid var(--border); padding:10px 0 calc(10px + var(--safe-bottom)); z-index:100; box-shadow:0 -4px 20px rgba(44,62,90,0.08); }
+  .bottom-nav-inner { display:flex; justify-content:space-around; max-width:500px; margin:0 auto; padding:0 10px; }
+  .nav-item { display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 16px; border:none; background:none; cursor:pointer; touch-action:manipulation; border-radius:12px; transition:background 0.15s; font-family:'DM Sans',sans-serif; }
+  .nav-item:active { background:var(--slate-pale); }
+  .nav-icon { font-size:1.3rem; }
+  .nav-label { font-size:0.65rem; font-weight:500; color:var(--muted); letter-spacing:0.03em; }
+  .nav-item.primary .nav-icon-wrap { width:48px; height:48px; background:var(--slate); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.4rem; box-shadow:var(--shadow-md); margin-bottom:-2px; color:#fff; }
+  .nav-item.primary .nav-label { color:var(--slate); font-weight:600; }
+
+  /* ── MODALS ── */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(30,37,48,0.5); z-index:200; align-items:flex-end; justify-content:center; backdrop-filter:blur(4px); }
+  .modal-overlay.open { display:flex; }
+  .modal { background:var(--warm-white); border-radius:24px 24px 0 0; padding:12px 24px calc(24px + var(--safe-bottom)); width:100%; max-width:560px; max-height:92vh; overflow-y:auto; box-shadow:var(--shadow-lg); animation:slideUp 0.28s cubic-bezier(0.34,1.2,0.64,1); -webkit-overflow-scrolling:touch; }
+  .modal::before { content:''; display:block; width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 20px; }
+  @keyframes slideUp { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
+  .modal h2 { font-family:'Fraunces',serif; font-size:1.35rem; font-weight:500; color:var(--ink); margin-bottom:4px; }
+  .modal .subtitle { font-size:0.82rem; color:var(--muted); margin-bottom:20px; line-height:1.5; }
+
+  .form-group { margin-bottom:14px; }
+  .form-group label { display:block; font-size:0.72rem; font-weight:600; color:var(--soft-ink); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.06em; }
+  .form-group input,.form-group select,.form-group textarea { width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:12px; font-family:'DM Sans',sans-serif; font-size:1rem; background:var(--cream); color:var(--ink); transition:border-color 0.2s; -webkit-appearance:none; appearance:none; }
+  .form-group input:focus,.form-group select:focus,.form-group textarea:focus { outline:none; border-color:var(--slate-light); background:var(--warm-white); }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .modal-actions { display:flex; gap:10px; margin-top:20px; }
+  .modal-btn-primary { flex:1; background:var(--slate); color:#fff; border:none; padding:14px 20px; border-radius:12px; font-family:'DM Sans',sans-serif; font-size:0.95rem; font-weight:600; cursor:pointer; transition:background 0.2s; touch-action:manipulation; }
+  .modal-btn-primary:active { background:var(--slate-mid); }
+  .modal-btn-secondary { background:var(--cream); color:var(--muted); border:1.5px solid var(--border); padding:14px 20px; border-radius:12px; font-family:'DM Sans',sans-serif; font-size:0.95rem; cursor:pointer; transition:all 0.2s; touch-action:manipulation; }
+  .modal-btn-secondary:active { border-color:var(--ink); color:var(--ink); }
+
+  .members-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+  .member-chip { padding:7px 14px; border-radius:20px; font-size:0.8rem; font-weight:500; cursor:pointer; border:1.5px solid var(--border); background:var(--cream); color:var(--soft-ink); transition:all 0.15s; touch-action:manipulation; }
+  .member-chip.selected { background:var(--slate); color:#fff; border-color:var(--slate); }
+
+  .drop-zone { border:2px dashed var(--border); border-radius:16px; padding:36px 20px; text-align:center; cursor:pointer; transition:all 0.2s; margin-bottom:18px; touch-action:manipulation; }
+  .drop-zone:active,.drop-zone.dragover { border-color:var(--slate-light); background:var(--slate-pale); }
+  .drop-zone .icon { font-size:2.2rem; margin-bottom:10px; }
+  .drop-zone p { font-size:0.85rem; color:var(--muted); line-height:1.5; }
+  .drop-zone strong { color:var(--ink); }
+
+  .processing-indicator { display:none; align-items:center; gap:10px; padding:14px; background:var(--slate-pale); border-radius:12px; font-size:0.85rem; color:var(--slate); margin-bottom:14px; }
+  .processing-indicator.active { display:flex; }
+  .spinner { width:18px; height:18px; border:2px solid var(--slate-soft); border-top-color:var(--slate); border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  .extracted-events { display:flex; flex-direction:column; gap:7px; max-height:260px; overflow-y:auto; margin-bottom:14px; }
+  .extracted-item { display:flex; align-items:flex-start; gap:10px; padding:11px 12px; background:var(--cream); border-radius:10px; border:1px solid var(--border); font-size:0.83rem; }
+  .extracted-item input[type="checkbox"] { margin-top:2px; width:18px; height:18px; accent-color:var(--slate); flex-shrink:0; }
+  .extracted-item-title { font-weight:500; color:var(--ink); }
+  .extracted-item-meta  { color:var(--muted); margin-top:3px; font-size:0.77rem; }
+
+  .info-box { border-radius:12px; padding:13px 15px; margin-bottom:18px; font-size:0.82rem; line-height:1.6; }
+  .info-box.sage  { background:var(--sage-pale);  color:var(--sage); }
+  .info-box.slate { background:var(--slate-pale); color:var(--slate); }
+
+  /* ── FAMILY INFO MODAL ── */
+  .family-info-row { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border); }
+  .family-info-row:last-child { border-bottom:none; }
+  .family-info-label { font-size:0.78rem; color:var(--muted); }
+  .family-info-value { font-size:0.88rem; font-weight:500; color:var(--ink); }
+  .copy-btn { background:var(--slate-pale); border:none; color:var(--slate); padding:5px 12px; border-radius:8px; font-size:0.78rem; font-weight:500; cursor:pointer; font-family:'DM Sans',sans-serif; touch-action:manipulation; }
+
+  /* ── TOAST ── */
+  .toast { position:fixed; bottom:calc(80px + var(--safe-bottom) + 8px); left:50%; transform:translateX(-50%) translateY(20px); background:var(--slate); color:#fff; padding:11px 20px; border-radius:24px; font-size:0.85rem; font-weight:500; z-index:500; opacity:0; transition:all 0.3s; white-space:nowrap; box-shadow:var(--shadow-md); pointer-events:none; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ── LOADING ── */
+  #loadingScreen { position:fixed; inset:0; background:var(--slate); display:flex; align-items:center; justify-content:center; z-index:1000; }
+  .loading-logo { font-family:'Fraunces',serif; font-size:2rem; font-weight:300; color:#fff; }
+  .loading-logo em { color:var(--sage-light); font-style:italic; }
+  .loading-spinner { width:28px; height:28px; border:2px solid rgba(255,255,255,0.2); border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite; margin:20px auto 0; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width:768px) {
+    .day-strip { display:block; } .week-nav { display:none; } .header-icons { display:none; }
+    .legend { display:none; } .week-grid { display:none; }
+    .mobile-day-view { display:flex; } .mobile-add-btn { display:block; } .bottom-nav { display:block; }
+    .event-card .delete-btn { display:flex; width:24px; height:24px; font-size:0.7rem; }
+    .event-card { padding:11px 14px; font-size:0.88rem; border-radius:12px; }
+    main { padding:16px 16px calc(90px + var(--safe-bottom)); }
+  }
+  @media (min-width:640px) {
+    .modal { border-radius:20px; max-width:480px; max-height:85vh; animation:fadeUp 0.25s ease; }
+    .modal-overlay { align-items:center; }
+    .auth-card,.family-card { animation:fadeUp 0.4s ease; }
+  }
+  @media (min-width:769px) and (max-width:1100px) {
+    .week-grid { grid-template-columns:repeat(7,minmax(120px,1fr)); overflow-x:auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loadingScreen">
+  <div style="text-align:center">
+    <div class="loading-logo">familie<em>plan</em></div>
+    <div class="loading-spinner"></div>
+  </div>
+</div>
+
+<!-- AUTH SCREEN -->
+<div id="authScreen" style="display:none">
+  <div class="auth-card">
+    <div class="auth-logo">familie<em>plan</em></div>
+    <div class="auth-tagline">Ukesplanlegger for hele familien</div>
+    <button class="btn-google" onclick="signInWithGoogle()">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+      Fortsett med Google
+    </button>
+    <div class="auth-divider"><span>eller</span></div>
+    <div class="auth-error" id="authError"></div>
+    <div id="loginForm">
+      <input class="auth-input" type="email" id="authEmail" placeholder="E-postadresse">
+      <input class="auth-input" type="password" id="authPassword" placeholder="Passord">
+      <button class="btn-primary" onclick="signInEmail()">Logg inn</button>
+      <div class="auth-switch">Har du ikke konto? <a onclick="showRegister()">Registrer deg</a></div>
+    </div>
+    <div id="registerForm" style="display:none">
+      <input class="auth-input" type="text" id="regName" placeholder="Ditt navn">
+      <input class="auth-input" type="email" id="regEmail" placeholder="E-postadresse">
+      <input class="auth-input" type="password" id="regPassword" placeholder="Passord (min. 6 tegn)">
+      <button class="btn-primary" onclick="registerEmail()">Opprett konto</button>
+      <div class="auth-switch">Har du allerede konto? <a onclick="showLogin()">Logg inn</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- FAMILY SETUP SCREEN -->
+<div id="familyScreen" style="display:none; min-height:100vh; align-items:center; justify-content:center; background:linear-gradient(135deg,var(--slate),var(--slate-mid) 50%,var(--sage)); padding:20px;">
+  <div class="family-card" id="familySetupCard">
+    <h2>Velkommen! 👋</h2>
+    <p>For å komme i gang trenger du enten å opprette en ny familie eller bli med i en eksisterende.</p>
+    <div class="family-option" onclick="showCreateFamily()">
+      <div class="family-option-icon">🏠</div>
+      <h3>Opprett ny familie</h3>
+      <p>Start en ny familiekalender og inviter andre</p>
+    </div>
+    <div class="family-divider">eller</div>
+    <div class="family-option" onclick="showJoinFamily()">
+      <div class="family-option-icon">🔗</div>
+      <h3>Bli med i en familie</h3>
+      <p>Skriv inn invitasjonskoden du har fått</p>
+    </div>
+  </div>
+
+  <div class="family-card" id="createFamilyCard" style="display:none">
+    <h2>Opprett familie</h2>
+    <p>Gi familien et navn – du kan invitere andre etterpå med en kode.</p>
+    <div class="form-group">
+      <label>Familienavn</label>
+      <input class="auth-input" type="text" id="familyName" placeholder="f.eks. Familie Nordmann">
+    </div>
+    <div class="form-group">
+      <label>Familiemedlemmer (navn, ett per linje)</label>
+      <textarea class="auth-input" id="familyMembersInput" rows="4" placeholder="Mamma&#10;Pappa&#10;Emma&#10;Liam" style="resize:none"></textarea>
+    </div>
+    <button class="btn-primary" onclick="createFamily()" style="margin-bottom:10px">Opprett familie</button>
+    <button class="btn-secondary" onclick="showFamilySetup()">Tilbake</button>
+  </div>
+
+  <div class="family-card" id="createdFamilyCard" style="display:none">
+    <h2>Familie opprettet! 🎉</h2>
+    <p>Del denne koden med familiemedlemmer så de kan bli med:</p>
+    <div class="code-display">
+      <div class="code" id="generatedCode">------</div>
+      <p>Invitasjonskode</p>
+    </div>
+    <button class="btn-primary" onclick="enterApp()" style="margin-bottom:10px">Åpne kalender</button>
+  </div>
+
+  <div class="family-card" id="joinFamilyCard" style="display:none">
+    <h2>Bli med i familie</h2>
+    <p>Skriv inn den 6-sifrede koden du har fått av et familiemedlem.</p>
+    <div class="form-group">
+      <input class="auth-input" type="text" id="joinCode" placeholder="123456" maxlength="6" style="text-align:center;font-size:1.5rem;letter-spacing:0.2em;font-family:'Fraunces',serif">
+    </div>
+    <div class="auth-error" id="joinError"></div>
+    <button class="btn-primary" onclick="joinFamily()" style="margin-bottom:10px">Bli med</button>
+    <button class="btn-secondary" onclick="showFamilySetup()">Tilbake</button>
+  </div>
+</div>
+
+<!-- APP SCREEN -->
+<div id="appScreen">
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        familie<em>plan</em>
+        <small id="familyNameLabel">laster...</small>
+      </div>
+      <div class="week-nav">
+        <button onclick="changeWeek(-1)">&#8592;</button>
+        <div class="week-label" id="weekLabel"></div>
+        <button onclick="changeWeek(1)">&#8594;</button>
+      </div>
+      <div class="header-icons">
+        <button class="icon-btn" onclick="openFamilyModal()" title="Familie-innstillinger">👨‍👩‍👧</button>
+        <button class="icon-btn" onclick="openSpondModal()" title="Importer Spond">📅</button>
+        <button class="icon-btn" onclick="openImportModal()" title="Importer PDF">📄</button>
+        <button class="icon-btn" onclick="signOut()" title="Logg ut">↩</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="day-strip" id="dayStrip">
+    <div class="day-strip-inner" id="dayStripInner"></div>
+  </div>
+
+  <main>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot school"></div> Skole</div>
+      <div class="legend-item"><div class="legend-dot sport"></div> Sport</div>
+      <div class="legend-item"><div class="legend-dot family"></div> Familie</div>
+      <div class="legend-item"><div class="legend-dot other"></div> Annet</div>
+    </div>
+    <div class="week-grid" id="weekGrid"></div>
+    <div class="mobile-day-view" id="mobileDayView"></div>
+    <button class="mobile-add-btn" id="mobileAddBtn" onclick="openAddModalMobile()">+ Legg til hendelse</button>
+  </main>
+
+  <div class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <button class="nav-item" onclick="openImportModal()">
+        <span class="nav-icon">📄</span><span class="nav-label">Importer</span>
+      </button>
+      <button class="nav-item primary" onclick="openAddModalMobile()">
+        <div class="nav-icon-wrap">＋</div><span class="nav-label">Legg til</span>
+      </button>
+      <button class="nav-item" onclick="openSpondModal()">
+        <span class="nav-icon">📅</span><span class="nav-label">Spond</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD EVENT MODAL -->
+<div class="modal-overlay" id="addEventModal">
+  <div class="modal">
+    <h2>Ny hendelse</h2>
+    <div class="subtitle" id="addEventDateLabel"></div>
+    <div class="form-group"><label>Tittel</label><input type="text" id="evTitle" placeholder="f.eks. Fotballtrening"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Fra</label><input type="time" id="evFrom"></div>
+      <div class="form-group"><label>Til</label><input type="time" id="evTo"></div>
+    </div>
+    <div class="form-group">
+      <label>Kategori</label>
+      <select id="evCategory">
+        <option value="school">🎒 Skole</option>
+        <option value="sport">⚽ Sport / Aktivitet</option>
+        <option value="family">🏠 Familie</option>
+        <option value="other">📌 Annet</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Hvem?</label><div class="members-row" id="memberChips"></div></div>
+    <div class="form-group"><label>Notater</label><textarea id="evNotes" rows="2" placeholder="Valgfri beskrivelse..."></textarea></div>
+    <div class="modal-actions">
+      <button class="modal-btn-secondary" onclick="closeAddModal()">Avbryt</button>
+      <button class="modal-btn-primary" onclick="saveEvent()">Lagre</button>
+    </div>
+  </div>
+</div>
+
+<!-- FAMILY MODAL -->
+<div class="modal-overlay" id="familyModal">
+  <div class="modal">
+    <h2>Familie</h2>
+    <div class="subtitle" id="familyModalSubtitle"></div>
+    <div id="familyInfoRows"></div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="modal-btn-secondary" onclick="closeFamilyModal()">Lukk</button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF MODAL -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <h2>Importer PDF</h2>
+    <div class="subtitle">Last opp et skolebrev – AI finner hendelsene automatisk</div>
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('pdfInput').click()">
+      <div class="icon">📄</div>
+      <p><strong>Trykk for å velge fil</strong><br>eller dra og slipp en PDF her</p>
+    </div>
+    <input type="file" id="pdfInput" accept=".pdf,.txt" style="display:none" onchange="handleFileSelect(event)">
+    <div class="processing-indicator" id="processingIndicator"><div class="spinner"></div><span>AI analyserer dokumentet...</span></div>
+    <div id="extractedSection" style="display:none">
+      <div style="font-size:0.75rem;font-weight:600;color:var(--soft-ink);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Funne hendelser</div>
+      <div class="extracted-events" id="extractedList"></div>
+      <div class="modal-actions">
+        <button class="modal-btn-secondary" onclick="closeImportModal()">Avbryt</button>
+        <button class="modal-btn-primary" onclick="importSelected()">Legg til valgte</button>
+      </div>
+    </div>
+    <div class="modal-actions" id="importInitialActions">
+      <button class="modal-btn-secondary" onclick="closeImportModal()">Lukk</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPOND MODAL -->
+<div class="modal-overlay" id="spondModal">
+  <div class="modal">
+    <h2>Importer fra Spond</h2>
+    <div class="subtitle">Last opp en .ics-fil fra Spond eller annen kalenderapp</div>
+    <div class="info-box sage"><strong>Eksporter fra Spond:</strong><br>Kalender → ••• → «Eksporter kalender» → lagre .ics-filen</div>
+    <div class="drop-zone" id="icsDropZone" onclick="document.getElementById('icsInput').click()">
+      <div class="icon">📅</div>
+      <p><strong>Trykk for å velge .ics-fil</strong></p>
+    </div>
+    <input type="file" id="icsInput" accept=".ics,.ical" style="display:none" onchange="handleIcsSelect(event)">
+    <div id="icsExtractedSection" style="display:none">
+      <div style="font-size:0.75rem;font-weight:600;color:var(--soft-ink);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Funne hendelser</div>
+      <div class="extracted-events" id="icsExtractedList"></div>
+      <div class="modal-actions">
+        <button class="modal-btn-secondary" onclick="closeSpondModal()">Avbryt</button>
+        <button class="modal-btn-primary" onclick="importIcsSelected()">Legg til valgte</button>
+      </div>
+    </div>
+    <div class="modal-actions" id="spondInitialActions">
+      <button class="modal-btn-secondary" onclick="closeSpondModal()">Lukk</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider,
+         createUserWithEmailAndPassword, signInWithEmailAndPassword,
+         updateProfile, signOut as fbSignOut }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc,
+         collection, query, where, onSnapshot, updateDoc, arrayUnion }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDv3bZGHZMnpZ8PaCbJZzk4BalEoHio-TQ",
+  authDomain: "familyplanner-78358.firebaseapp.com",
+  projectId: "familyplanner-78358",
+  storageBucket: "familyplanner-78358.firebasestorage.app",
+  messagingSenderId: "231231049536",
+  appId: "1:231231049536:web:5978c16929f4bff9d6f4a5",
+  measurementId: "G-RWZ1C08Z8B"
+};
+
+const app   = initializeApp(firebaseConfig);
+const auth  = getAuth(app);
+const db    = getFirestore(app);
+
+// ── State ──
+let currentUser = null;
+let familyId    = null;
+let familyData  = null;
+let events      = [];
+let unsubEvents = null;
+
+const DAYS_NO    = ['Mandag','Tirsdag','Onsdag','Torsdag','Fredag','Lørdag','Søndag'];
+const DAYS_SHORT = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
+let currentWeekOffset = 0;
+let selectedMobileDay = 0;
+let selectedDay       = null;
+let selectedMembers   = [];
+let extractedEventsData = [];
+let icsExtractedData    = [];
+
+// ── Auth state ──
+onAuthStateChanged(auth, async user => {
+  document.getElementById('loadingScreen').style.display = 'none';
+  if (!user) {
+    showScreen('auth');
+    return;
+  }
+  currentUser = user;
+  // Check if user has a family
+  const userDoc = await getDoc(doc(db, 'users', user.uid));
+  if (userDoc.exists() && userDoc.data().familyId) {
+    familyId = userDoc.data().familyId;
+    await loadFamily();
+    showScreen('app');
+    subscribeEvents();
+  } else {
+    showScreen('family');
+    showFamilySetup();
+  }
+});
+
+function showScreen(name) {
+  document.getElementById('loadingScreen').style.display  = 'none';
+  document.getElementById('authScreen').style.display     = name==='auth'   ? 'flex' : 'none';
+  document.getElementById('familyScreen').style.display   = name==='family' ? 'flex' : 'none';
+  document.getElementById('appScreen').style.display      = name==='app'    ? 'block': 'none';
+}
+
+// ── Auth functions ──
+window.signInWithGoogle = async () => {
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  } catch(e) { showAuthError(e.message); }
+};
+
+window.signInEmail = async () => {
+  const email = document.getElementById('authEmail').value.trim();
+  const pass  = document.getElementById('authPassword').value;
+  try { await signInWithEmailAndPassword(auth, email, pass); }
+  catch(e) { showAuthError('Feil e-post eller passord'); }
+};
+
+window.registerEmail = async () => {
+  const name  = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pass  = document.getElementById('regPassword').value;
+  if (!name) { showAuthError('Skriv inn ditt navn'); return; }
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await updateProfile(cred.user, { displayName: name });
+  } catch(e) { showAuthError(e.message); }
+};
+
+window.signOut = async () => {
+  if (unsubEvents) unsubEvents();
+  await fbSignOut(auth);
+};
+
+window.showRegister = () => {
+  document.getElementById('loginForm').style.display    = 'none';
+  document.getElementById('registerForm').style.display = 'block';
+  clearAuthError();
+};
+window.showLogin = () => {
+  document.getElementById('loginForm').style.display    = 'block';
+  document.getElementById('registerForm').style.display = 'none';
+  clearAuthError();
+};
+
+function showAuthError(msg) {
+  const el = document.getElementById('authError');
+  el.textContent = msg; el.style.display = 'block';
+}
+function clearAuthError() { document.getElementById('authError').style.display = 'none'; }
+
+// ── Family setup ──
+window.showFamilySetup = () => {
+  document.getElementById('familySetupCard').style.display   = 'block';
+  document.getElementById('createFamilyCard').style.display  = 'none';
+  document.getElementById('createdFamilyCard').style.display = 'none';
+  document.getElementById('joinFamilyCard').style.display    = 'none';
+};
+window.showCreateFamily = () => {
+  document.getElementById('familySetupCard').style.display  = 'none';
+  document.getElementById('createFamilyCard').style.display = 'block';
+};
+window.showJoinFamily = () => {
+  document.getElementById('familySetupCard').style.display = 'none';
+  document.getElementById('joinFamilyCard').style.display  = 'block';
+};
+
+window.createFamily = async () => {
+  const name    = document.getElementById('familyName').value.trim();
+  const members = document.getElementById('familyMembersInput').value
+                    .split('\n').map(m=>m.trim()).filter(Boolean);
+  if (!name) { alert('Skriv inn et familienavn'); return; }
+
+  const code = Math.floor(100000 + Math.random()*900000).toString();
+  const familyRef = doc(collection(db, 'families'));
+  await setDoc(familyRef, {
+    name, code, members: members.length ? members : ['Mamma','Pappa'],
+    createdBy: currentUser.uid,
+    memberUids: [currentUser.uid],
+    createdAt: Date.now()
+  });
+  await setDoc(doc(db,'users',currentUser.uid), { familyId: familyRef.id }, { merge:true });
+
+  document.getElementById('generatedCode').textContent = code;
+  document.getElementById('createFamilyCard').style.display  = 'none';
+  document.getElementById('createdFamilyCard').style.display = 'block';
+
+  familyId = familyRef.id;
+  await loadFamily();
+};
+
+window.joinFamily = async () => {
+  const code = document.getElementById('joinCode').value.trim();
+  if (code.length !== 6) { showJoinError('Koden må være 6 siffer'); return; }
+
+  // Find family by code
+  const q = query(collection(db,'families'), where('code','==',code));
+  const snap = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js")
+    .then(({getDocs}) => getDocs(q));
+
+  if (snap.empty) { showJoinError('Fant ingen familie med den koden'); return; }
+
+  const fDoc = snap.docs[0];
+  await updateDoc(doc(db,'families',fDoc.id), { memberUids: arrayUnion(currentUser.uid) });
+  await setDoc(doc(db,'users',currentUser.uid), { familyId: fDoc.id }, { merge:true });
+
+  familyId = fDoc.id;
+  await loadFamily();
+  showScreen('app');
+  subscribeEvents();
+};
+
+function showJoinError(msg) {
+  const el = document.getElementById('joinError');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+window.enterApp = () => {
+  showScreen('app');
+  subscribeEvents();
+};
+
+async function loadFamily() {
+  const snap = await getDoc(doc(db,'families',familyId));
+  familyData = snap.data();
+  const label = document.getElementById('familyNameLabel');
+  if (label) label.textContent = familyData?.name || '';
+}
+
+// ── Firestore real-time events ──
+function subscribeEvents() {
+  if (unsubEvents) unsubEvents();
+  const q = query(collection(db,'events'), where('familyId','==',familyId));
+  unsubEvents = onSnapshot(q, snap => {
+    events = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    render();
+  });
+}
+
+// ── Calendar render ──
+function getWeekDates(offset=0) {
+  const now=new Date(), dow=now.getDay();
+  const monday=new Date(now);
+  monday.setDate(now.getDate()-(dow===0?6:dow-1)+offset*7);
+  return Array.from({length:7},(_,i)=>{const d=new Date(monday);d.setDate(monday.getDate()+i);return d;});
+}
+function formatDate(d) { return d.toISOString().split('T')[0]; }
+function isToday(d)    { return formatDate(d)===formatDate(new Date()); }
+function isMobile()    { return window.innerWidth<=768; }
+
+window.changeWeek = dir => {
+  currentWeekOffset+=dir;
+  if(isMobile()){const dates=getWeekDates(currentWeekOffset);const ti=dates.findIndex(d=>isToday(d));selectedMobileDay=ti>=0?ti:0;}
+  render();
+};
+
+function render() {
+  const dates=getWeekDates(currentWeekOffset);
+  const opts={day:'numeric',month:'short'};
+  document.getElementById('weekLabel').textContent=
+    `${dates[0].toLocaleDateString('no-NO',opts)} – ${dates[6].toLocaleDateString('no-NO',opts)}`;
+  renderDesktopGrid(dates);
+  renderDayStrip(dates);
+  renderMobileDay(dates);
+}
+
+function renderDesktopGrid(dates) {
+  const grid=document.getElementById('weekGrid');
+  grid.innerHTML='';
+  dates.forEach((date,i)=>{
+    const ds=formatDate(date);
+    const evts=events.filter(e=>e.date===ds).sort((a,b)=>(a.from||'').localeCompare(b.from||''));
+    const col=document.createElement('div');
+    col.className='day-col'+(isToday(date)?' today':'');
+    col.innerHTML=`
+      <div class="day-header">
+        <div class="day-name">${DAYS_NO[i]}</div>
+        <div class="day-date">${date.toLocaleDateString('no-NO',{day:'numeric',month:'short'})}</div>
+        ${isToday(date)?'<div class="today-pill">I dag</div>':''}
+      </div>
+      <div class="day-events">
+        ${evts.map(renderEventCard).join('')}
+        <button class="add-event-btn" onclick="openAddModal('${ds}')">+ Legg til</button>
+      </div>`;
+    grid.appendChild(col);
+  });
+}
+
+function renderDayStrip(dates) {
+  document.getElementById('dayStripInner').innerHTML=dates.map((date,i)=>{
+    const hasEvts=events.some(e=>e.date===formatDate(date));
+    return `<div class="strip-day ${i===selectedMobileDay?'active':''} ${isToday(date)?'is-today':''}" onclick="selectMobileDay(${i})">
+      <div class="strip-dayname">${DAYS_SHORT[i]}</div>
+      <div class="strip-daynum">${date.getDate()}</div>
+      ${hasEvts?'<div class="strip-dot"></div>':'<div style="height:7px"></div>'}
+    </div>`;
+  }).join('');
+}
+
+function renderMobileDay(dates) {
+  const date=dates[selectedMobileDay];
+  const ds=formatDate(date);
+  const evts=events.filter(e=>e.date===ds).sort((a,b)=>(a.from||'').localeCompare(b.from||''));
+  document.getElementById('mobileDayView').innerHTML=`
+    <div class="mobile-day-header">
+      ${DAYS_NO[selectedMobileDay]}
+      <span class="date-small">${date.toLocaleDateString('no-NO',{day:'numeric',month:'long',year:'numeric'})}</span>
+    </div>
+    <div class="mobile-events-list">
+      ${evts.length?evts.map(renderEventCard).join(''):'<div class="empty-day"><div class="empty-icon">📭</div>Ingen hendelser denne dagen</div>'}
+    </div>`;
+  document.getElementById('mobileAddBtn').dataset.date=ds;
+}
+
+window.selectMobileDay = i => {
+  selectedMobileDay=i;
+  const dates=getWeekDates(currentWeekOffset);
+  renderDayStrip(dates); renderMobileDay(dates);
+};
+
+function renderEventCard(ev) {
+  return `<div class="event-card ${ev.category}">
+    <button class="delete-btn" onclick="deleteEvent('${ev.id}',event)">✕</button>
+    <div class="event-title">${ev.title}</div>
+    ${ev.from?`<div class="event-time">🕐 ${ev.from}${ev.to?' – '+ev.to:''}</div>`:''}
+    ${ev.who?.length?`<div class="event-who">👤 ${ev.who.join(', ')}</div>`:''}
+  </div>`;
+}
+
+// ── Add Event ──
+window.openAddModal = dateStr => {
+  selectedDay=dateStr; selectedMembers=[];
+  ['evTitle','evFrom','evTo','evNotes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('evCategory').value='school';
+  const d=new Date(dateStr+'T12:00:00');
+  document.getElementById('addEventDateLabel').textContent=
+    d.toLocaleDateString('no-NO',{weekday:'long',day:'numeric',month:'long'});
+  const members=familyData?.members||['Mamma','Pappa'];
+  document.getElementById('memberChips').innerHTML=members.map(m=>
+    `<span class="member-chip" onclick="toggleMember(this,'${m}')">${m}</span>`).join('');
+  document.getElementById('addEventModal').classList.add('open');
+  setTimeout(()=>document.getElementById('evTitle').focus(),200);
+};
+
+window.openAddModalMobile = () => {
+  const ds=document.getElementById('mobileAddBtn').dataset.date||formatDate(getWeekDates(currentWeekOffset)[selectedMobileDay]);
+  openAddModal(ds);
+};
+window.closeAddModal = () => document.getElementById('addEventModal').classList.remove('open');
+
+window.toggleMember = (el,name) => {
+  if(selectedMembers.includes(name)){selectedMembers=selectedMembers.filter(m=>m!==name);el.classList.remove('selected');}
+  else{selectedMembers.push(name);el.classList.add('selected');}
+};
+
+window.saveEvent = async () => {
+  const title=document.getElementById('evTitle').value.trim();
+  if(!title){document.getElementById('evTitle').focus();return;}
+  await addDoc(collection(db,'events'),{
+    familyId, date:selectedDay, title,
+    from:document.getElementById('evFrom').value,
+    to:document.getElementById('evTo').value,
+    category:document.getElementById('evCategory').value,
+    who:[...selectedMembers],
+    notes:document.getElementById('evNotes').value.trim(),
+    createdBy:currentUser.uid, createdAt:Date.now()
+  });
+  closeAddModal(); showToast('Hendelse lagt til ✓');
+};
+
+window.deleteEvent = async (id,e) => {
+  if(e)e.stopPropagation();
+  await deleteDoc(doc(db,'events',id));
+  showToast('Hendelse slettet');
+};
+
+// ── Family modal ──
+window.openFamilyModal = () => {
+  document.getElementById('familyModalSubtitle').textContent = familyData?.name || '';
+  document.getElementById('familyInfoRows').innerHTML = `
+    <div class="family-info-row">
+      <div>
+        <div class="family-info-label">Invitasjonskode</div>
+        <div class="family-info-value" style="font-family:'Fraunces',serif;font-size:1.5rem;letter-spacing:0.15em">${familyData?.code||'–'}</div>
+      </div>
+      <button class="copy-btn" onclick="copyCode()">Kopier</button>
+    </div>
+    <div class="family-info-row">
+      <div class="family-info-label">Familiemedlemmer</div>
+      <div class="family-info-value">${(familyData?.members||[]).join(', ')}</div>
+    </div>
+    <div class="family-info-row">
+      <div class="family-info-label">Innlogget som</div>
+      <div class="family-info-value">${currentUser?.displayName||currentUser?.email||'–'}</div>
+    </div>`;
+  document.getElementById('familyModal').classList.add('open');
+};
+window.closeFamilyModal = () => document.getElementById('familyModal').classList.remove('open');
+window.copyCode = () => {
+  navigator.clipboard?.writeText(familyData?.code||'');
+  showToast('Kode kopiert! 📋');
+};
+
+// ── PDF Import ──
+window.openImportModal = () => {
+  document.getElementById('importModal').classList.add('open');
+  document.getElementById('processingIndicator').classList.remove('active');
+  document.getElementById('extractedSection').style.display='none';
+  document.getElementById('importInitialActions').style.display='flex';
+  document.getElementById('pdfInput').value='';
+};
+window.closeImportModal = () => document.getElementById('importModal').classList.remove('open');
+
+const dropZone=document.getElementById('dropZone');
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('dragover');});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('dragover');if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0]);});
+window.handleFileSelect = e=>{if(e.target.files[0])processFile(e.target.files[0]);};
+
+async function processFile(file) {
+  document.getElementById('processingIndicator').classList.add('active');
+  document.getElementById('importInitialActions').style.display='none';
+  document.getElementById('extractedSection').style.display='none';
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    try{
+      const b64=e.target.result.split(',')[1];
+      const resp=await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,
+          system:`Du er en assistent som hjelper familier med å planlegge uken. Analyser dokumentet og ekstraher alle hendelser. Svar KUN med JSON-array. Format: [{"title":"","date":"YYYY-MM-DD","from":"HH:MM","to":"HH:MM","category":"school|sport|family|other","who":"","notes":""}] Bruk år ${new Date().getFullYear()}.`,
+          messages:[{role:"user",content:[{type:"document",source:{type:"base64",media_type:file.type||"application/pdf",data:b64}},{type:"text",text:"Ekstraher alle hendelser."}]}]})
+      });
+      const data=await resp.json();
+      let txt=(data.content||[]).map(b=>b.text||'').join('').replace(/```json|```/g,'').trim();
+      showExtractedEvents(JSON.parse(txt));
+    }catch(err){
+      console.error(err);
+      document.getElementById('processingIndicator').classList.remove('active');
+      document.getElementById('importInitialActions').style.display='flex';
+      showToast('Feil ved analyse. Prøv igjen.');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function showExtractedEvents(items) {
+  document.getElementById('processingIndicator').classList.remove('active');
+  extractedEventsData=items;
+  document.getElementById('extractedList').innerHTML=items.length?items.map((item,i)=>`
+    <div class="extracted-item">
+      <input type="checkbox" id="ext${i}" checked>
+      <div class="extracted-item-info">
+        <div class="extracted-item-title">${item.title}</div>
+        <div class="extracted-item-meta">${item.date?'📅 '+formatDisplayDate(item.date):'📅 Ingen dato'}${item.from?' · 🕐 '+item.from+(item.to?'–'+item.to:''):''}${item.who?' · 👤 '+item.who:''}</div>
+      </div>
+    </div>`).join(''):'<div style="color:var(--muted);font-size:0.85rem;padding:10px">Ingen hendelser funnet.</div>';
+  document.getElementById('extractedSection').style.display='block';
+  document.getElementById('importInitialActions').style.display='none';
+  showToast(`Fant ${items.length} hendelse(r)`);
+}
+
+window.importSelected = async () => {
+  let count=0;
+  for(let i=0;i<extractedEventsData.length;i++){
+    const cb=document.getElementById('ext'+i);
+    const item=extractedEventsData[i];
+    if(cb?.checked&&item.date){
+      await addDoc(collection(db,'events'),{familyId,date:item.date,title:item.title,from:item.from||'',to:item.to||'',category:item.category||'other',who:item.who?[item.who]:[],notes:item.notes||'',createdBy:currentUser.uid,createdAt:Date.now()});
+      count++;
+    }
+  }
+  closeImportModal(); showToast(`${count} hendelse(r) lagt til ✓`);
+};
+
+// ── ICS / Spond ──
+window.openSpondModal = () => {
+  document.getElementById('spondModal').classList.add('open');
+  document.getElementById('icsExtractedSection').style.display='none';
+  document.getElementById('spondInitialActions').style.display='flex';
+  document.getElementById('icsInput').value='';
+};
+window.closeSpondModal = () => document.getElementById('spondModal').classList.remove('open');
+
+const icsDropZone=document.getElementById('icsDropZone');
+icsDropZone.addEventListener('dragover',e=>{e.preventDefault();icsDropZone.classList.add('dragover');});
+icsDropZone.addEventListener('dragleave',()=>icsDropZone.classList.remove('dragover'));
+icsDropZone.addEventListener('drop',e=>{e.preventDefault();icsDropZone.classList.remove('dragover');if(e.dataTransfer.files[0])processIcsFile(e.dataTransfer.files[0]);});
+window.handleIcsSelect = e=>{if(e.target.files[0])processIcsFile(e.target.files[0]);};
+
+function processIcsFile(file) {
+  const reader=new FileReader();
+  reader.onload=e=>{icsExtractedData=parseICS(e.target.result);showIcsExtracted(icsExtractedData);};
+  reader.readAsText(file,'UTF-8');
+}
+
+function parseICS(text) {
+  const evts=[];
+  text.split('BEGIN:VEVENT').slice(1).forEach(block=>{
+    const get=key=>{const m=block.match(new RegExp(`(?:${key}[^:]*):(.+)`,'i'));return m?m[1].replace(/\\n/g,' ').replace(/\\,/g,',').trim():'';};
+    const summary=get('SUMMARY');if(!summary)return;
+    const pDT=dt=>{
+      if(!dt)return{date:null,time:null};
+      if(/^\d{8}$/.test(dt))return{date:`${dt.slice(0,4)}-${dt.slice(4,6)}-${dt.slice(6,8)}`,time:null};
+      const m=dt.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/);
+      return m?{date:`${m[1]}-${m[2]}-${m[3]}`,time:`${m[4]}:${m[5]}`}:{date:null,time:null};
+    };
+    const start=pDT(get('DTSTART')),end=pDT(get('DTEND'));
+    const desc=get('DESCRIPTION'),loc=get('LOCATION');
+    const t=(summary+' '+desc).toLowerCase();
+    let category='other';
+    if(/skole|lekse|fagdag|prøve|eksamen|foreldremøte/.test(t))category='school';
+    else if(/trening|kamp|turnering|fotball|håndball|svøm|sport|dans|spond/.test(t))category='sport';
+    else if(/familie|bursdag|fest|middag|ferie|tur/.test(t))category='family';
+    let notes=loc?'📍 '+loc:'';
+    if(desc&&desc.length<200)notes+=(notes?' · ':'')+desc;
+    evts.push({title:summary,date:start.date,from:start.time,to:end.time,category,who:'',notes:notes.slice(0,200)});
+  });
+  return evts;
+}
+
+function showIcsExtracted(items) {
+  document.getElementById('spondInitialActions').style.display='none';
+  document.getElementById('icsExtractedSection').style.display='block';
+  items.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  document.getElementById('icsExtractedList').innerHTML=items.length?items.map((item,i)=>`
+    <div class="extracted-item">
+      <input type="checkbox" id="ics${i}" ${item.date?'checked':''}>
+      <div class="extracted-item-info">
+        <div class="extracted-item-title">${item.title}</div>
+        <div class="extracted-item-meta">${item.date?'📅 '+formatDisplayDate(item.date):'⚠️ Ingen dato'}${item.from?' · 🕐 '+item.from+(item.to?'–'+item.to:''):''}${item.notes?' · '+item.notes.slice(0,60):''}</div>
+      </div>
+    </div>`).join(''):'<div style="color:var(--muted);font-size:0.85rem;padding:10px">Ingen hendelser funnet.</div>';
+  showToast(`Fant ${items.length} hendelse(r) i filen`);
+}
+
+window.importIcsSelected = async () => {
+  let count=0;
+  for(let i=0;i<icsExtractedData.length;i++){
+    const cb=document.getElementById('ics'+i);
+    const item=icsExtractedData[i];
+    if(cb?.checked&&item.date){
+      await addDoc(collection(db,'events'),{familyId,date:item.date,title:item.title,from:item.from||'',to:item.to||'',category:item.category||'other',who:item.who?[item.who]:[],notes:item.notes||'',createdBy:currentUser.uid,createdAt:Date.now()});
+      count++;
+    }
+  }
+  closeSpondModal(); showToast(`${count} hendelse(r) fra Spond lagt til ✓`);
+};
+
+// ── Helpers ──
+function formatDisplayDate(ds) {
+  if(!ds)return'';
+  try{return new Date(ds+'T12:00:00').toLocaleDateString('no-NO',{weekday:'short',day:'numeric',month:'short'});}catch{return ds;}
+}
+
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+document.querySelectorAll('.modal-overlay').forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('open');}));
+
+// Swipe on mobile
+let txStart=0;
+const mdv=document.getElementById('mobileDayView');
+mdv.addEventListener('touchstart',e=>{txStart=e.touches[0].clientX;},{passive:true});
+mdv.addEventListener('touchend',e=>{
+  const diff=txStart-e.changedTouches[0].clientX;
+  if(Math.abs(diff)>50){
+    if(diff>0){if(selectedMobileDay<6)selectMobileDay(selectedMobileDay+1);else{currentWeekOffset++;selectedMobileDay=0;render();}}
+    else{if(selectedMobileDay>0)selectMobileDay(selectedMobileDay-1);else{currentWeekOffset--;selectedMobileDay=6;render();}}
+  }
+},{passive:true});
+
+// Init today
+const todayIdx=getWeekDates(0).findIndex(d=>isToday(d));
+if(todayIdx>=0)selectedMobileDay=todayIdx;
+
+</script>
+</body>
+</html>
