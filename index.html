@@ -511,14 +511,39 @@
 <!-- SPOND MODAL -->
 <div class="modal-overlay" id="spondModal">
   <div class="modal">
-    <h2>Importer fra Spond</h2>
-    <div class="subtitle">Last opp en .ics-fil fra Spond eller annen kalenderapp</div>
-    <div class="info-box sage"><strong>Eksporter fra Spond:</strong><br>Kalender → ••• → «Eksporter kalender» → lagre .ics-filen</div>
-    <div class="drop-zone" id="icsDropZone" onclick="document.getElementById('icsInput').click()">
-      <div class="icon">📅</div>
-      <p><strong>Trykk for å velge .ics-fil</strong></p>
+    <h2>Importer kalender</h2>
+    <div class="subtitle">Hent hendelser fra Google Kalender, Spond eller annen kalenderapp</div>
+
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <button id="tabUrl" onclick="switchCalTab('url')" style="flex:1;padding:9px;border-radius:10px;border:1.5px solid var(--slate);background:var(--slate);color:#fff;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;touch-action:manipulation;">🔗 Fra URL</button>
+      <button id="tabFile" onclick="switchCalTab('file')" style="flex:1;padding:9px;border-radius:10px;border:1.5px solid var(--border);background:var(--cream);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:500;cursor:pointer;touch-action:manipulation;">📁 Last opp fil</button>
+    </div>
+
+    <div id="calUrlPanel">
+      <div class="info-box slate" style="font-size:0.8rem;">
+        <strong>Google Kalender:</strong> Innstillinger → velg kalender → scroll ned til «Hemmelig adresse i iCal-format» → kopier URL-en<br><br>
+        <strong>Spond:</strong> Kalender → ••• → «Eksporter kalender» → kopier URL
+      </div>
+      <div class="form-group">
+        <label>Kalender-URL (.ics)</label>
+        <input type="url" id="calendarUrl" placeholder="https://calendar.google.com/calendar/ical/..." style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:0.9rem;background:var(--cream);color:var(--ink);-webkit-appearance:none;appearance:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--slate-light)'" onblur="this.style.borderColor='var(--border)'">
+      </div>
+      <button onclick="fetchCalendarUrl()" style="width:100%;background:var(--slate);color:#fff;border:none;padding:13px;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:0.95rem;font-weight:600;cursor:pointer;margin-bottom:4px;touch-action:manipulation;">Hent kalender</button>
+    </div>
+
+    <div id="calFilePanel" style="display:none">
+      <div class="info-box sage" style="font-size:0.8rem;"><strong>Eksporter fra Spond:</strong><br>Kalender → ••• → «Eksporter kalender» → lagre .ics-filen og last den opp her</div>
+      <div class="drop-zone" id="icsDropZone" onclick="document.getElementById('icsInput').click()">
+        <div class="icon">📅</div>
+        <p><strong>Trykk for å velge .ics-fil</strong><br>Støtter Spond, Google Kalender, Apple Kalender</p>
+      </div>
     </div>
     <input type="file" id="icsInput" accept=".ics,.ical" style="display:none" onchange="handleIcsSelect(event)">
+
+    <div class="processing-indicator" id="calProcessingIndicator" style="display:none;align-items:center;gap:10px;padding:14px;background:var(--slate-pale);border-radius:12px;font-size:0.85rem;color:var(--slate);margin-bottom:14px;">
+      <div class="spinner"></div><span>Henter kalender...</span>
+    </div>
+
     <div id="icsExtractedSection" style="display:none">
       <div style="font-size:0.75rem;font-weight:600;color:var(--soft-ink);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Funne hendelser</div>
       <div class="extracted-events" id="icsExtractedList"></div>
@@ -980,6 +1005,47 @@ window.openSpondModal = () => {
   document.getElementById('icsExtractedSection').style.display='none';
   document.getElementById('spondInitialActions').style.display='flex';
   document.getElementById('icsInput').value='';
+  document.getElementById('calendarUrl').value='';
+  document.getElementById('calProcessingIndicator').style.display='none';
+  switchCalTab('url');
+};
+
+window.switchCalTab = (tab) => {
+  const isUrl = tab === 'url';
+  document.getElementById('calUrlPanel').style.display  = isUrl ? 'block' : 'none';
+  document.getElementById('calFilePanel').style.display = isUrl ? 'none'  : 'block';
+  document.getElementById('tabUrl').style.background  = isUrl ? 'var(--slate)' : 'var(--cream)';
+  document.getElementById('tabUrl').style.color       = isUrl ? '#fff' : 'var(--muted)';
+  document.getElementById('tabUrl').style.borderColor = isUrl ? 'var(--slate)' : 'var(--border)';
+  document.getElementById('tabFile').style.background  = isUrl ? 'var(--cream)' : 'var(--slate)';
+  document.getElementById('tabFile').style.color       = isUrl ? 'var(--muted)' : '#fff';
+  document.getElementById('tabFile').style.borderColor = isUrl ? 'var(--border)' : 'var(--slate)';
+};
+
+window.fetchCalendarUrl = async () => {
+  const url = document.getElementById('calendarUrl').value.trim();
+  if (!url) { showToast('Lim inn en kalender-URL først'); return; }
+
+  document.getElementById('calProcessingIndicator').style.display='flex';
+  document.getElementById('spondInitialActions').style.display='none';
+  document.getElementById('icsExtractedSection').style.display='none';
+
+  try {
+    const resp = await fetch('/.netlify/functions/fetch-calendar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || 'Ukjent feil');
+    document.getElementById('calProcessingIndicator').style.display='none';
+    icsExtractedData = parseICS(data.icsText);
+    showIcsExtracted(icsExtractedData);
+  } catch(err) {
+    document.getElementById('calProcessingIndicator').style.display='none';
+    document.getElementById('spondInitialActions').style.display='flex';
+    showToast('Kunne ikke hente kalender: ' + err.message);
+  }
 };
 window.closeSpondModal = () => document.getElementById('spondModal').classList.remove('open');
 
