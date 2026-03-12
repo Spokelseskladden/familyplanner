@@ -928,11 +928,9 @@ async function processFile(file) {
   reader.onload=async e=>{
     try{
       const b64=e.target.result.split(',')[1];
-      const resp=await fetch("https://api.anthropic.com/v1/messages",{
+      const resp=await fetch("/.netlify/functions/analyze-pdf",{
         method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,
-          system:`Du er en assistent som hjelper familier med å planlegge uken. Analyser dokumentet og ekstraher alle hendelser. Svar KUN med JSON-array. Format: [{"title":"","date":"YYYY-MM-DD","from":"HH:MM","to":"HH:MM","category":"school|sport|family|other","who":"","notes":""}] Bruk år ${new Date().getFullYear()}.`,
-          messages:[{role:"user",content:[{type:"document",source:{type:"base64",media_type:file.type||"application/pdf",data:b64}},{type:"text",text:"Ekstraher alle hendelser."}]}]})
+        body:JSON.stringify({fileData:b64,mediaType:file.type||"application/pdf"})
       });
       const data=await resp.json();
       let txt=(data.content||[]).map(b=>b.text||'').join('').replace(/```json|```/g,'').trim();
