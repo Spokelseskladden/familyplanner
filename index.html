@@ -630,6 +630,14 @@ onAuthStateChanged(auth, async user => {
   } else {
     showScreen('family');
     showFamilySetup();
+    // Auto-fill invite code if coming from an invite link
+    const inviteCode = new URLSearchParams(location.search).get('invite');
+    if (inviteCode) {
+      document.getElementById('joinCode').value = inviteCode;
+      showJoinFamily();
+      // Clean URL without reloading
+      history.replaceState({}, '', location.pathname);
+    }
   }
 });
 
@@ -976,6 +984,7 @@ window.deleteEditingEvent = async () => {
 // ── Family modal ──
 window.openFamilyModal = () => {
   document.getElementById('familyModalSubtitle').textContent = familyData?.name || '';
+  const inviteUrl = `${location.origin}${location.pathname}?invite=${familyData?.code||''}`;
   document.getElementById('familyInfoRows').innerHTML = `
     <div class="family-info-row">
       <div>
@@ -983,6 +992,16 @@ window.openFamilyModal = () => {
         <div class="family-info-value" style="font-family:'Fraunces',serif;font-size:1.5rem;letter-spacing:0.15em">${familyData?.code||'–'}</div>
       </div>
       <button class="copy-btn" onclick="copyCode()">Kopier</button>
+    </div>
+    <div class="family-info-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
+      <div>
+        <div class="family-info-label">Invitasjonslenke</div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-top:3px;word-break:break-all;line-height:1.5;">${inviteUrl}</div>
+      </div>
+      <div style="display:flex;gap:8px;width:100%;">
+        <button class="copy-btn" onclick="copyInviteLink()" style="flex:1;justify-content:center;">🔗 Kopier lenke</button>
+        <button class="copy-btn" onclick="shareInviteLink()" style="flex:1;justify-content:center;" id="shareInviteBtn">📤 Del</button>
+      </div>
     </div>
     <div class="family-info-row">
       <div class="family-info-label">Familiemedlemmer</div>
@@ -992,12 +1011,35 @@ window.openFamilyModal = () => {
       <div class="family-info-label">Innlogget som</div>
       <div class="family-info-value">${currentUser?.displayName||currentUser?.email||'–'}</div>
     </div>`;
+  // Hide share button if Web Share API not available
+  if (!navigator.share) document.getElementById('shareInviteBtn').style.display='none';
   document.getElementById('familyModal').classList.add('open');
 };
 window.closeFamilyModal = () => document.getElementById('familyModal').classList.remove('open');
 window.copyCode = () => {
   navigator.clipboard?.writeText(familyData?.code||'');
   showToast('Kode kopiert! 📋');
+};
+
+window.copyInviteLink = () => {
+  const url = `${location.origin}${location.pathname}?invite=${familyData?.code||''}`;
+  navigator.clipboard?.writeText(url);
+  showToast('Invitasjonslenke kopiert! 🔗');
+};
+
+window.shareInviteLink = async () => {
+  const url = `${location.origin}${location.pathname}?invite=${familyData?.code||''}`;
+  try {
+    await navigator.share({
+      title: `Bli med i ${familyData?.name||'familiekalenderen'}`,
+      text: `Jeg inviterer deg til familiekalenderen vår. Trykk på lenken for å bli med!`,
+      url
+    });
+  } catch(e) {
+    // User cancelled or share failed – fall back to copy
+    navigator.clipboard?.writeText(url);
+    showToast('Lenke kopiert! 🔗');
+  }
 };
 
 window.shiftAllEventsOneHour = async () => {
