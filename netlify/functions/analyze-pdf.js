@@ -11,32 +11,17 @@ exports.handler = async (event) => {
   try {
     const body = JSON.parse(event.body);
 
-    // Calculate weekday dates in Norwegian time (UTC+1/UTC+2) to avoid off-by-one errors
-    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Oslo' }));
-    const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon ... 6=Sat
-    const diffToMonday = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek);
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + diffToMonday);
-
-    const weekDates = {};
-    const dayNames = ['mandag','tirsdag','onsdag','torsdag','fredag','lordag','sondag'];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      weekDates[dayNames[i]] = `${yyyy}-${mm}-${dd}`;
-    }
-
-    const weekContext = `Inneværende uke (norsk tid):
-- Mandag: ${weekDates['mandag']}
-- Tirsdag: ${weekDates['tirsdag']}
-- Onsdag: ${weekDates['onsdag']}
-- Torsdag: ${weekDates['torsdag']}
-- Fredag: ${weekDates['fredag']}
-- Lørdag: ${weekDates['lordag']}
-- Søndag: ${weekDates['sondag']}`;
+    // Fallback week dates sent from client (used only if doc has no explicit dates)
+    const wd = body.weekDates || {};
+    const fallbackWeek = wd.mandag ? `
+Hvis dokumentet IKKE inneholder eksplisitte datoer, bruk disse datoene som fallback:
+- Mandag: ${wd.mandag}
+- Tirsdag: ${wd.tirsdag}
+- Onsdag: ${wd.onsdag}
+- Torsdag: ${wd.torsdag}
+- Fredag: ${wd.fredag}
+- Lørdag: ${wd.lordag}
+- Søndag: ${wd.sondag}` : '';
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -50,23 +35,20 @@ exports.handler = async (event) => {
         max_tokens: 2000,
         system: `Du er en kalenderassistent som hjelper familier med å ekstrahere hendelser fra skolebrev, nyhetsbrev, timeplaner og informasjonsskriv.
 
-${weekContext}
+DATOER - følg denne prioriteringen:
+1. Hvis dokumentet inneholder eksplisitte datoer eller ukenummer med datoer (f.eks. "Uke 12 (16.-20. mars 2026)" eller "mandag 16. mars"), bruk disse til å beregne datoer for alle ukedager i den uken.
+2. Hvis dokumentet kun nevner ukedager uten datoer (f.eks. "svømming på fredag"):${fallbackWeek || ' sett date til null.'}
 
-VIKTIG om datoer - følg disse reglene nøye:
-- Når teksten nevner en ukedag (mandag, tirsdag, onsdag, torsdag, fredag, lørdag), bruk ALLTID den tilsvarende datoen fra listen ovenfor
-- "svømming på fredag" → date skal være ${weekDates['fredag']}
-- "leksebøker tilbake på torsdag" → date skal være ${weekDates['torsdag']}
-- Hvis dokumentet har eksplisitte datoer (f.eks. "14. mars 2025"), bruk de i stedet for ukens datoer
-- Sett date til null KUN hvis det er umulig å fastslå hvilken dag
+Eksempel: Hvis dokumentet sier "Uke 12 (16.-20. mars 2026)" og nevner "svømming på fredag", skal date være 2026-03-20.
+Eksempel: "4. juni er det sommeravslutning" → date: 2026-06-04.
 
 TIMEPLANER og TABELLER:
-- Hvis dokumentet inneholder en ukeplan/timeplan med fag per dag, se etter aktiviteter som skiller seg ut
 - Svømming i timeplan → ekstraher som sport-hendelse på riktig dag
-- Vanlige skolefag (norsk, matte, engelsk osv.) trenger ikke egne hendelser med mindre de er spesielle
+- Vanlige skolefag (norsk, matte, engelsk osv.) trenger ikke egne hendelser
 
 REGLER for hva som skal ekstraheres:
-Ja: aktiviteter med ukedag/dato, arrangementer, frister, svømming, utflukter, fridager, foreldremøter, innleveringer
-Nei: generelle leksebeskrivelser uten dato, rutiner uten spesifikk dag denne uken
+Ja: aktiviteter med ukedag/dato, arrangementer, frister, svømming, utflukter, fridager, foreldremøter, innleveringer, sommeravslutninger
+Nei: generelle leksebeskrivelser, faglige mål, rutinebeskrivelser uten spesifikk dato
 
 Svar KUN med et JSON-array, ingen forklaring eller markdown. Tom liste [] hvis ingenting.
 Format: [{"title":"tittel","date":"YYYY-MM-DD","from":"HH:MM","to":"HH:MM","category":"school|sport|family|other","who":"hvem","notes":"notat"}]
