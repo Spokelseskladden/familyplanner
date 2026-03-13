@@ -447,15 +447,19 @@
   </div>
 </div>
 
-<!-- ADD EVENT MODAL -->
+<!-- ADD / EDIT EVENT MODAL -->
 <div class="modal-overlay" id="addEventModal">
   <div class="modal">
-    <h2>Ny hendelse</h2>
+    <h2 id="addEventModalTitle">Ny hendelse</h2>
     <div class="subtitle" id="addEventDateLabel"></div>
     <div class="form-group"><label>Tittel</label><input type="text" id="evTitle" placeholder="f.eks. Fotballtrening"></div>
     <div class="form-row">
       <div class="form-group"><label>Fra</label><input type="time" id="evFrom"></div>
       <div class="form-group"><label>Til</label><input type="time" id="evTo"></div>
+    </div>
+    <div class="form-group">
+      <label>Dato</label>
+      <input type="date" id="evDate">
     </div>
     <div class="form-group">
       <label>Kategori</label>
@@ -467,10 +471,13 @@
       </select>
     </div>
     <div class="form-group"><label>Hvem?</label><div class="members-row" id="memberChips"></div></div>
-    <div class="form-group"><label>Notater</label><textarea id="evNotes" rows="2" placeholder="Valgfri beskrivelse..."></textarea></div>
+    <div class="form-group"><label>Notater</label><textarea id="evNotes" rows="3" placeholder="Valgfri beskrivelse, sted, lenke..."></textarea></div>
+    <div id="evDeleteRow" style="display:none;margin-bottom:4px;">
+      <button onclick="deleteEditingEvent()" style="width:100%;background:none;border:1.5px solid var(--rose);color:var(--rose);padding:11px;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:500;cursor:pointer;touch-action:manipulation;">🗑 Slett hendelse</button>
+    </div>
     <div class="modal-actions">
       <button class="modal-btn-secondary" onclick="closeAddModal()">Avbryt</button>
-      <button class="modal-btn-primary" onclick="saveEvent()">Lagre</button>
+      <button class="modal-btn-primary" id="saveEventBtn" onclick="saveEvent()">Lagre</button>
     </div>
   </div>
 </div>
@@ -851,58 +858,118 @@ window.selectMobileDay = i => {
 };
 
 function renderEventCard(ev) {
-  return `<div class="event-card ${ev.category}">
-    <button class="delete-btn" onclick="deleteEvent('${ev.id}',event)">✕</button>
+  return `<div class="event-card ${ev.category}" onclick="openEditModal('${ev.id}')" title="Trykk for å redigere">
+    <button class="delete-btn" onclick="deleteEvent('${ev.id}',event)" title="Slett">✕</button>
     <div class="event-title">${ev.title}</div>
     ${ev.from?`<div class="event-time">🕐 ${ev.from}${ev.to?' – '+ev.to:''}</div>`:''}
     ${ev.who?.length?`<div class="event-who">👤 ${ev.who.join(', ')}</div>`:''}
+    ${ev.notes?`<div class="event-who">📝 ${ev.notes.slice(0,60)}${ev.notes.length>60?'…':''}</div>`:''}
   </div>`;
 }
 
-// ── Add Event ──
+// ── Add / Edit Event ──
+let editingEventId = null;
+
+function populateModal(ev, dateStr) {
+  selectedDay = dateStr;
+  selectedMembers = ev.who ? [...ev.who] : [];
+  document.getElementById('evTitle').value    = ev.title    || '';
+  document.getElementById('evFrom').value     = ev.from     || '';
+  document.getElementById('evTo').value       = ev.to       || '';
+  document.getElementById('evDate').value     = dateStr     || '';
+  document.getElementById('evNotes').value    = ev.notes    || '';
+  document.getElementById('evCategory').value = ev.category || 'other';
+  const members = familyData?.members || ['Mamma','Pappa'];
+  document.getElementById('memberChips').innerHTML = members.map(m =>
+    `<span class="member-chip ${selectedMembers.includes(m)?'selected':''}" onclick="toggleMember(this,'${m}')">${m}</span>`
+  ).join('');
+}
+
 window.openAddModal = dateStr => {
-  selectedDay=dateStr; selectedMembers=[];
-  ['evTitle','evFrom','evTo','evNotes'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('evCategory').value='school';
-  const d=new Date(dateStr+'T12:00:00');
-  document.getElementById('addEventDateLabel').textContent=
+  editingEventId = null;
+  document.getElementById('addEventModalTitle').textContent = 'Ny hendelse';
+  document.getElementById('saveEventBtn').textContent = 'Lagre';
+  document.getElementById('evDeleteRow').style.display = 'none';
+  const d = new Date(dateStr+'T12:00:00');
+  document.getElementById('addEventDateLabel').textContent =
     d.toLocaleDateString('no-NO',{weekday:'long',day:'numeric',month:'long'});
-  const members=familyData?.members||['Mamma','Pappa'];
-  document.getElementById('memberChips').innerHTML=members.map(m=>
-    `<span class="member-chip" onclick="toggleMember(this,'${m}')">${m}</span>`).join('');
+  populateModal({}, dateStr);
   document.getElementById('addEventModal').classList.add('open');
-  setTimeout(()=>document.getElementById('evTitle').focus(),200);
+  setTimeout(()=>document.getElementById('evTitle').focus(), 200);
+};
+
+window.openEditModal = id => {
+  const ev = events.find(e => e.id === id);
+  if (!ev) return;
+  editingEventId = id;
+  document.getElementById('addEventModalTitle').textContent = 'Rediger hendelse';
+  document.getElementById('saveEventBtn').textContent = 'Oppdater';
+  document.getElementById('evDeleteRow').style.display = 'block';
+  const d = new Date(ev.date+'T12:00:00');
+  document.getElementById('addEventDateLabel').textContent =
+    d.toLocaleDateString('no-NO',{weekday:'long',day:'numeric',month:'long'});
+  populateModal(ev, ev.date);
+  document.getElementById('addEventModal').classList.add('open');
+  setTimeout(()=>document.getElementById('evTitle').focus(), 200);
 };
 
 window.openAddModalMobile = () => {
-  const ds=document.getElementById('mobileAddBtn').dataset.date||formatDate(getWeekDates(currentWeekOffset)[selectedMobileDay]);
+  const ds = document.getElementById('mobileAddBtn').dataset.date ||
+             formatDate(getWeekDates(currentWeekOffset)[selectedMobileDay]);
   openAddModal(ds);
 };
-window.closeAddModal = () => document.getElementById('addEventModal').classList.remove('open');
+
+window.closeAddModal = () => {
+  document.getElementById('addEventModal').classList.remove('open');
+  editingEventId = null;
+};
 
 window.toggleMember = (el,name) => {
-  if(selectedMembers.includes(name)){selectedMembers=selectedMembers.filter(m=>m!==name);el.classList.remove('selected');}
-  else{selectedMembers.push(name);el.classList.add('selected');}
+  if(selectedMembers.includes(name)){
+    selectedMembers=selectedMembers.filter(m=>m!==name);
+    el.classList.remove('selected');
+  } else {
+    selectedMembers.push(name);
+    el.classList.add('selected');
+  }
 };
 
 window.saveEvent = async () => {
-  const title=document.getElementById('evTitle').value.trim();
-  if(!title){document.getElementById('evTitle').focus();return;}
-  await addDoc(collection(db,'events'),{
-    familyId, date:selectedDay, title,
-    from:document.getElementById('evFrom').value,
-    to:document.getElementById('evTo').value,
-    category:document.getElementById('evCategory').value,
-    who:[...selectedMembers],
-    notes:document.getElementById('evNotes').value.trim(),
-    createdBy:currentUser.uid, createdAt:Date.now()
-  });
-  closeAddModal(); showToast('Hendelse lagt til ✓');
+  const title = document.getElementById('evTitle').value.trim();
+  if (!title) { document.getElementById('evTitle').focus(); return; }
+
+  const dateVal = document.getElementById('evDate').value || selectedDay;
+  const payload = {
+    familyId, date: dateVal, title,
+    from:     document.getElementById('evFrom').value,
+    to:       document.getElementById('evTo').value,
+    category: document.getElementById('evCategory').value,
+    who:      [...selectedMembers],
+    notes:    document.getElementById('evNotes').value.trim(),
+  };
+
+  if (editingEventId) {
+    await updateDoc(doc(db,'events',editingEventId), payload);
+    closeAddModal(); showToast('Hendelse oppdatert ✓');
+  } else {
+    await addDoc(collection(db,'events'), {
+      ...payload, createdBy:currentUser.uid, createdAt:Date.now()
+    });
+    closeAddModal(); showToast('Hendelse lagt til ✓');
+  }
 };
 
 window.deleteEvent = async (id,e) => {
-  if(e)e.stopPropagation();
+  if(e) e.stopPropagation();
   await deleteDoc(doc(db,'events',id));
+  showToast('Hendelse slettet');
+};
+
+window.deleteEditingEvent = async () => {
+  if (!editingEventId) return;
+  if (!window.confirm('Slett denne hendelsen?')) return;
+  await deleteDoc(doc(db,'events',editingEventId));
+  closeAddModal();
   showToast('Hendelse slettet');
 };
 
