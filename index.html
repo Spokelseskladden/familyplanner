@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#2C3E5A">
 <title>Familieplanlegger</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232C3E5A'/><rect x='6' y='10' width='20' height='16' rx='3' fill='%23EEF4FA'/><rect x='6' y='10' width='20' height='6' rx='3' fill='%235A7A65'/><rect x='10' y='6' width='3' height='6' rx='1.5' fill='%23EEF4FA'/><rect x='19' y='6' width='3' height='6' rx='1.5' fill='%23EEF4FA'/><rect x='9' y='20' width='4' height='3' rx='1' fill='%235A7A65'/><rect x='14' y='20' width='4' height='3' rx='1' fill='%232C3E5A'/><rect x='19' y='20' width='4' height='3' rx='1' fill='%232C3E5A'/></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,500;0,700;1,300&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -281,12 +282,15 @@
 
   /* ── RESPONSIVE ── */
   @media (max-width:768px) {
-    .day-strip { display:block; } .week-nav { display:none; } .header-icons { display:none; }
+    .day-strip { display:block; } .week-nav { display:none; } .header-icons { display:flex; }
     .legend { display:none; } .week-grid { display:none; }
     .mobile-day-view { display:flex; } .mobile-add-btn { display:block; } .bottom-nav { display:block; }
     .event-card .delete-btn { display:flex; width:24px; height:24px; font-size:0.7rem; }
     .event-card { padding:11px 14px; font-size:0.88rem; border-radius:12px; }
     main { padding:16px 16px calc(90px + var(--safe-bottom)); }
+    .icon-btn { width:30px; height:30px; font-size:0.9rem; border-radius:8px; }
+    .logo { font-size:1rem; }
+    .logo small { font-size:0.6rem; }
   }
   @media (min-width:640px) {
     .modal { border-radius:20px; max-width:480px; max-height:85vh; animation:fadeUp 0.25s ease; }
@@ -405,7 +409,7 @@
       </div>
       <div class="header-icons">
         <button class="icon-btn" onclick="openFamilyModal()" title="Familie-innstillinger">👨‍👩‍👧</button>
-        <button class="icon-btn" onclick="openSpondModal()" title="Importer Spond">📅</button>
+        <button class="icon-btn" onclick="openSpondModal()" title="Importer kalender">📅</button>
         <button class="icon-btn" onclick="openImportModal()" title="Importer PDF">📄</button>
         <button class="icon-btn" onclick="signOut()" title="Logg ut">↩</button>
       </div>
@@ -430,14 +434,14 @@
 
   <div class="bottom-nav">
     <div class="bottom-nav-inner">
-      <button class="nav-item" onclick="openImportModal()">
-        <span class="nav-icon">📄</span><span class="nav-label">Importer</span>
+      <button class="nav-item" onclick="changeWeek(-1)">
+        <span class="nav-icon">◀</span><span class="nav-label">Forrige</span>
       </button>
       <button class="nav-item primary" onclick="openAddModalMobile()">
         <div class="nav-icon-wrap">＋</div><span class="nav-label">Legg til</span>
       </button>
-      <button class="nav-item" onclick="openSpondModal()">
-        <span class="nav-icon">📅</span><span class="nav-label">Spond</span>
+      <button class="nav-item" onclick="changeWeek(1)">
+        <span class="nav-icon">▶</span><span class="nav-label">Neste</span>
       </button>
     </div>
   </div>
@@ -986,17 +990,28 @@ function showExtractedEvents(items) {
   showToast(`Fant ${items.length} hendelse(r)`);
 }
 
+// Duplikat-sjekk: tittel + dato + starttid
+function isDuplicate(item) {
+  return events.some(e =>
+    e.date === item.date &&
+    e.title.trim().toLowerCase() === (item.title||'').trim().toLowerCase() &&
+    (e.from||'') === (item.from||'')
+  );
+}
+
 window.importSelected = async () => {
-  let count=0;
+  let count=0, skipped=0;
   for(let i=0;i<extractedEventsData.length;i++){
     const cb=document.getElementById('ext'+i);
     const item=extractedEventsData[i];
     if(cb?.checked&&item.date){
+      if(isDuplicate(item)){skipped++;continue;}
       await addDoc(collection(db,'events'),{familyId,date:item.date,title:item.title,from:item.from||'',to:item.to||'',category:item.category||'other',who:item.who?[item.who]:[],notes:item.notes||'',createdBy:currentUser.uid,createdAt:Date.now()});
       count++;
     }
   }
-  closeImportModal(); showToast(`${count} hendelse(r) lagt til ✓`);
+  closeImportModal();
+  showToast(skipped>0 ? `${count} lagt til, ${skipped} duplikat(er) hoppet over` : `${count} hendelse(r) lagt til ✓`);
 };
 
 // ── ICS / Spond ──
@@ -1066,13 +1081,28 @@ function parseICS(text) {
   text.split('BEGIN:VEVENT').slice(1).forEach(block=>{
     const get=key=>{const m=block.match(new RegExp(`(?:${key}[^:]*):(.+)`,'i'));return m?m[1].replace(/\\n/g,' ').replace(/\\,/g,',').trim():'';};
     const summary=get('SUMMARY');if(!summary)return;
-    const pDT=dt=>{
+    const pDT=(dt, raw)=>{
       if(!dt)return{date:null,time:null};
+      // All-day event (no time component)
       if(/^\d{8}$/.test(dt))return{date:`${dt.slice(0,4)}-${dt.slice(4,6)}-${dt.slice(6,8)}`,time:null};
       const m=dt.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/);
-      return m?{date:`${m[1]}-${m[2]}-${m[3]}`,time:`${m[4]}:${m[5]}`}:{date:null,time:null};
+      if(!m)return{date:null,time:null};
+      // If timestamp ends with Z it is UTC — convert to local time
+      const isUtc = raw && raw.trim().endsWith('Z');
+      if(isUtc){
+        const utcDate=new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00Z`);
+        const local=new Date(utcDate.getTime());
+        const yyyy=local.getFullYear();
+        const MM=String(local.getMonth()+1).padStart(2,'0');
+        const dd=String(local.getDate()).padStart(2,'0');
+        const hh=String(local.getHours()).padStart(2,'0');
+        const mm=String(local.getMinutes()).padStart(2,'0');
+        return{date:`${yyyy}-${MM}-${dd}`,time:`${hh}:${mm}`};
+      }
+      return{date:`${m[1]}-${m[2]}-${m[3]}`,time:`${m[4]}:${m[5]}`};
     };
-    const start=pDT(get('DTSTART')),end=pDT(get('DTEND'));
+    const rawStart=get('DTSTART'), rawEnd=get('DTEND');
+    const start=pDT(rawStart,rawStart),end=pDT(rawEnd,rawEnd);
     const desc=get('DESCRIPTION'),loc=get('LOCATION');
     const t=(summary+' '+desc).toLowerCase();
     let category='other';
@@ -1091,27 +1121,23 @@ function showIcsExtracted(items) {
   document.getElementById('icsExtractedSection').style.display='block';
   items.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   document.getElementById('icsExtractedList').innerHTML=items.length?items.map((item,i)=>`
-    <div class="extracted-item">
-      <input type="checkbox" id="ics${i}" ${item.date?'checked':''}>
-      <div class="extracted-item-info">
-        <div class="extracted-item-title">${item.title}</div>
-        <div class="extracted-item-meta">${item.date?'📅 '+formatDisplayDate(item.date):'⚠️ Ingen dato'}${item.from?' · 🕐 '+item.from+(item.to?'–'+item.to:''):''}${item.notes?' · '+item.notes.slice(0,60):''}</div>
-      </div>
-    </div>`).join(''):'<div style="color:var(--muted);font-size:0.85rem;padding:10px">Ingen hendelser funnet.</div>';
+    <div class="extracted-item" style="${isDuplicate(item)?'opacity:0.55':''}">\n      <input type="checkbox" id="ics${i}" ${isDuplicate(item)?'':item.date?'checked':''}>\n      <div class="extracted-item-info">\n        <div class="extracted-item-title">${item.title} ${isDuplicate(item)?'<span style="font-size:0.7rem;background:var(--amber-soft);color:var(--amber);padding:1px 6px;border-radius:4px;font-weight:600;">finnes allerede</span>':''}</div>\n        <div class="extracted-item-meta">${item.date?'📅 '+formatDisplayDate(item.date):'⚠️ Ingen dato'}${item.from?' · 🕐 '+item.from+(item.to?'–'+item.to:''):''}${item.notes?' · '+item.notes.slice(0,60):''}</div>\n      </div>\n    </div>`).join(''):'<div style="color:var(--muted);font-size:0.85rem;padding:10px">Ingen hendelser funnet.</div>';
   showToast(`Fant ${items.length} hendelse(r) i filen`);
 }
 
 window.importIcsSelected = async () => {
-  let count=0;
+  let count=0, skipped=0;
   for(let i=0;i<icsExtractedData.length;i++){
     const cb=document.getElementById('ics'+i);
     const item=icsExtractedData[i];
     if(cb?.checked&&item.date){
+      if(isDuplicate(item)){skipped++;continue;}
       await addDoc(collection(db,'events'),{familyId,date:item.date,title:item.title,from:item.from||'',to:item.to||'',category:item.category||'other',who:item.who?[item.who]:[],notes:item.notes||'',createdBy:currentUser.uid,createdAt:Date.now()});
       count++;
     }
   }
-  closeSpondModal(); showToast(`${count} hendelse(r) fra Spond lagt til ✓`);
+  closeSpondModal();
+  showToast(skipped>0 ? `${count} lagt til, ${skipped} duplikat(er) hoppet over` : `${count} hendelse(r) lagt til ✓`);
 };
 
 // ── Helpers ──
