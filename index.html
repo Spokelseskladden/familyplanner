@@ -933,6 +933,52 @@ window.copyCode = () => {
   showToast('Kode kopiert! 📋');
 };
 
+window.shiftAllEventsOneHour = async () => {
+  const confirm = window.confirm(
+    `Dette vil flytte ALLE ${events.length} hendelser i familiekalenderen én time frem.\n\nDette bør kun gjøres én gang for å korrigere tidssone-feil. Fortsette?`
+  );
+  if (!confirm) return;
+
+  closeFamilyModal();
+  showToast('Oppdaterer hendelser...');
+
+  let updated = 0;
+  for (const ev of events) {
+    // Only shift events that have a time
+    if (!ev.from) continue;
+
+    const shiftTime = (t) => {
+      if (!t) return t;
+      const [h, m] = t.split(':').map(Number);
+      const d = new Date(2000, 0, 1, h, m);
+      d.setHours(d.getHours() + 1);
+      // Handle day rollover: if hour goes past 23, also bump the date
+      return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    };
+
+    const newFrom = shiftTime(ev.from);
+    const newTo   = shiftTime(ev.to);
+
+    // Handle midnight rollover for date: if from was e.g. 23:30 -> 00:30, bump date
+    const [fh] = ev.from.split(':').map(Number);
+    let newDate = ev.date;
+    if (fh === 23) {
+      const d = new Date(ev.date + 'T12:00:00');
+      d.setDate(d.getDate() + 1);
+      newDate = d.toISOString().split('T')[0];
+    }
+
+    await updateDoc(doc(db, 'events', ev.id), {
+      from: newFrom,
+      to:   newTo,
+      date: newDate
+    });
+    updated++;
+  }
+
+  showToast(`${updated} hendelse(r) flyttet én time frem ✓`);
+};
+
 // ── PDF Import ──
 window.openImportModal = () => {
   document.getElementById('importModal').classList.add('open');
