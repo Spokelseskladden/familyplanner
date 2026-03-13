@@ -11,17 +11,22 @@ exports.handler = async (event) => {
   try {
     const body = JSON.parse(event.body);
 
-    // Fallback week dates sent from client (used only if doc has no explicit dates)
+    // Always compute week dates on the server using the client-provided offset
+    // Client sends weekDates already computed in local Norwegian time
     const wd = body.weekDates || {};
-    const fallbackWeek = wd.mandag ? `
-Hvis dokumentet IKKE inneholder eksplisitte datoer, bruk disse datoene som fallback:
-- Mandag: ${wd.mandag}
-- Tirsdag: ${wd.tirsdag}
-- Onsdag: ${wd.onsdag}
-- Torsdag: ${wd.torsdag}
-- Fredag: ${wd.fredag}
-- Lørdag: ${wd.lordag}
-- Søndag: ${wd.sondag}` : '';
+    const hasWeekDates = !!(wd.mandag && wd.tirsdag && wd.onsdag && wd.torsdag && wd.fredag);
+
+    const weekContext = hasWeekDates ? `
+Datoer for uken dokumentet gjelder:
+- Mandag = ${wd.mandag}
+- Tirsdag = ${wd.tirsdag}
+- Onsdag = ${wd.onsdag}
+- Torsdag = ${wd.torsdag}
+- Fredag = ${wd.fredag}
+- Lørdag = ${wd.lordag || ''}
+- Søndag = ${wd.sondag || ''}
+
+Bruk ALLTID disse datoene når du oversetter ukedager til datoer. Ikke beregn datoer selv fra ukenummer – bruk kun tabellen ovenfor.` : `Sett date til null hvis du ikke finner eksplisitt dato i dokumentet.`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -33,26 +38,23 @@ Hvis dokumentet IKKE inneholder eksplisitte datoer, bruk disse datoene som fallb
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 2000,
-        system: `Du er en kalenderassistent som hjelper familier med å ekstrahere hendelser fra skolebrev, nyhetsbrev, timeplaner og informasjonsskriv.
+        system: `Du er en kalenderassistent som hjelper familier med å ekstrahere konkrete hendelser fra skolebrev og ukeplaner.
 
-DATOER - følg denne prioriteringen:
-1. Hvis dokumentet inneholder eksplisitte datoer eller ukenummer med datoer (f.eks. "Uke 12 (16.-20. mars 2026)" eller "mandag 16. mars"), bruk disse til å beregne datoer for alle ukedager i den uken.
-2. Hvis dokumentet kun nevner ukedager uten datoer (f.eks. "svømming på fredag"):${fallbackWeek || ' sett date til null.'}
+${weekContext}
 
-Eksempel: Hvis dokumentet sier "Uke 12 (16.-20. mars 2026)" og nevner "svømming på fredag", skal date være 2026-03-20.
-Eksempel: "4. juni er det sommeravslutning" → date: 2026-06-04.
+KRITISK REGEL – rutiner vs. hendelser:
+Setninger med flertallsform av ukedag ("mandager", "tirsdager", "torsdager" osv.) beskriver faste ukentlige rutiner og skal IKKE opprettes som hendelser.
+- "Leksebøkene sendes hjem på mandager og må være med tilbake på torsdager" → IGNORER HELT
+- "Vi har gym hver tirsdag" → IGNORER
+Entallsform som konkret påminnelse → opprett hendelse:
+- "Husk at det er svømming på fredag" → opprett, date = fredag fra tabellen ovenfor
+- "4. juni er det sommeravslutning" → opprett med eksplisitt dato
 
-TIMEPLANER og TABELLER:
-- Svømming i timeplan → ekstraher som sport-hendelse på riktig dag
-- Vanlige skolefag (norsk, matte, engelsk osv.) trenger ikke egne hendelser
+TIMEPLANER: Svømming i timeplan → sport-hendelse på riktig dag. Vanlige skolefag trenger ikke egne hendelser.
 
-REGLER for hva som skal ekstraheres:
-Ja: aktiviteter med ukedag/dato, arrangementer, frister, svømming, utflukter, fridager, foreldremøter, innleveringer, sommeravslutninger
-Nei: generelle leksebeskrivelser, faglige mål, rutinebeskrivelser uten spesifikk dato
-
-Svar KUN med et JSON-array, ingen forklaring eller markdown. Tom liste [] hvis ingenting.
+Svar KUN med JSON-array, ingen forklaring eller markdown.
 Format: [{"title":"tittel","date":"YYYY-MM-DD","from":"HH:MM","to":"HH:MM","category":"school|sport|family|other","who":"hvem","notes":"notat"}]
-category: skole/fagdag/prøve/foreldremøte=school, svømming/sport/trening=sport, familie=family, annet=other`,
+category: skole/fagdag/prøve=school, svømming/sport/trening=sport, familie=family, annet=other`,
         messages: [{
           role: 'user',
           content: [
@@ -64,7 +66,7 @@ category: skole/fagdag/prøve/foreldremøte=school, svømming/sport/trening=spor
                 data: body.fileData
               }
             },
-            { type: 'text', text: 'Ekstraher alle hendelser og aktiviteter fra dette dokumentet.' }
+            { type: 'text', text: 'Ekstraher konkrete hendelser. Bruk datotabellen for å oversette ukedager. Ignorer faste rutiner med flertallsform.' }
           ]
         }]
       })
